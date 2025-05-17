@@ -1,0 +1,30 @@
+.app {
+  text-align: center;
+  min-height: 100vh;
+  background-color: #282c34;
+  color: white;
+}
+
+.app-header {
+  background-color: #1a1d24;
+  padding: 20px;
+  color: white;
+}
+
+.app-content {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .container {
+    flex-direction: row;
+  }
+} 
