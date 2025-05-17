@@ -1,88 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Snippet, SnippetFilters as SnippetFiltersType } from '../types/snippet';
-import SnippetFilters from './SnippetFilters';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { API_URL } from '../api/config';
+import { useAuth } from '../context/AuthContext';
+import { Snippet, SnippetFilters as SnippetFiltersType } from '../types/snippet';
+import { mockSnippets } from '../data/mockSnippets';
+import { languageIcons } from '../utils/languageIcons';
 
-const languages = [
-  'javascript',
-  'typescript',
-  'python',
-  'java',
-  'cpp',
-  'csharp',
-  'php',
-  'ruby',
-  'swift',
-  'go',
-  'rust',
-  'html',
-  'css',
-  'sql',
-  'bash',
-  'json',
-  'yaml',
-  'markdown',
-];
+interface SnippetListProps {
+  filters: SnippetFiltersType;
+}
 
-const commonTags = [
-  'Frontend',
-  'Backend',
-  'Database',
-  'API',
-  'Security',
-  'React',
-  'Node.js',
-  'Python',
-  'TypeScript',
-  'JavaScript',
-];
-
-const SnippetList: React.FC = () => {
+const SnippetList: React.FC<SnippetListProps> = ({ filters }) => {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [filteredSnippets, setFilteredSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { token } = useAuth();
-  const [filters, setFilters] = useState<SnippetFiltersType>({
-    search: '',
-    language: '',
-    tags: [],
-    isPublic: false,
-  });
+  const { user } = useAuth();
+
+  // Calculate snippet counts per language
+  const languageCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    snippets.forEach(snippet => {
+      counts[snippet.language] = (counts[snippet.language] || 0) + 1;
+    });
+    return counts;
+  }, [snippets]);
 
   useEffect(() => {
-    fetchSnippets();
-  }, [token]);
+    // Simulate API call with mock data
+    setLoading(true);
+    setTimeout(() => {
+      setSnippets(mockSnippets);
+      setLoading(false);
+    }, 1000);
+  }, []);
 
   useEffect(() => {
     filterSnippets();
   }, [snippets, filters]);
-
-  const fetchSnippets = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_URL}/api/snippets`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch snippets');
-      }
-
-      const data = await response.json();
-      setSnippets(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filterSnippets = () => {
     let filtered = [...snippets];
@@ -90,17 +47,19 @@ const SnippetList: React.FC = () => {
     // Apply search filter
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(
-        snippet =>
-          snippet.title.toLowerCase().includes(searchLower) ||
-          snippet.description.toLowerCase().includes(searchLower) ||
-          snippet.code.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(snippet =>
+        snippet.title.toLowerCase().includes(searchLower) ||
+        snippet.description.toLowerCase().includes(searchLower) ||
+        snippet.code.toLowerCase().includes(searchLower) ||
+        snippet.tags.some(tag => tag.toLowerCase().includes(searchLower))
       );
     }
 
     // Apply language filter
-    if (filters.language) {
-      filtered = filtered.filter(snippet => snippet.language === filters.language);
+    if (filters.language && filters.language !== 'All') {
+      filtered = filtered.filter(snippet => 
+        snippet.language.toLowerCase() === filters.language.toLowerCase()
+      );
     }
 
     // Apply tags filter
@@ -110,163 +69,224 @@ const SnippetList: React.FC = () => {
       );
     }
 
-    // Apply public filter
-    if (filters.isPublic) {
-      filtered = filtered.filter(snippet => snippet.isPublic);
+    // Apply public/private filter
+    if (filters.isPublic !== undefined) {
+      filtered = filtered.filter(snippet => snippet.isPublic === filters.isPublic);
     }
 
     setFilteredSnippets(filtered);
   };
 
-  const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
+  const handleCopyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
+  };
+
+  const handleFavorite = async (snippetId: string) => {
+    try {
+      // Simulate API call
+      const updatedSnippets = snippets.map(snippet => {
+        if (snippet._id === snippetId) {
+          const isFavorited = snippet.favorites.includes(user?._id || '');
+          return {
+            ...snippet,
+            favorites: isFavorited
+              ? snippet.favorites.filter(id => id !== user?._id)
+              : [...snippet.favorites, user?._id || '']
+          };
+        }
+        return snippet;
+      });
+      setSnippets(updatedSnippets);
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+    }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-        <strong className="font-bold">Error!</strong>
-        <span className="block sm:inline"> {error}</span>
+      <div className="text-red-500 text-center p-4">
+        {error}
       </div>
     );
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 10
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: -20,
+      transition: {
+        duration: 0.2
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Code Snippets</h2>
-        <Link
-          to="/editor"
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+      {/* Language Filter Info */}
+      {filters.language && filters.language !== 'All' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4"
         >
-          New Snippet
-        </Link>
-      </div>
-
-      <SnippetFilters
-        filters={filters}
-        onFilterChange={setFilters}
-        availableTags={commonTags}
-        availableLanguages={languages}
-      />
-
-      {filteredSnippets.length === 0 ? (
-        <div className="text-center py-12">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No snippets found</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {snippets.length === 0
-              ? 'Get started by creating a new code snippet.'
-              : 'Try adjusting your filters to find what you\'re looking for.'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredSnippets.map((snippet) => (
-            <div
-              key={snippet._id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow duration-200 overflow-hidden"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white truncate">
-                    {snippet.title}
-                  </h3>
-                  <span className="px-2 py-1 text-xs font-medium text-purple-600 bg-purple-100 rounded-full">
-                    {snippet.language}
-                  </span>
-                </div>
-
-                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4">
-                  {snippet.description}
+          <div className="flex items-center space-x-3">
+            <span className="text-2xl">{languageIcons[filters.language as keyof typeof languageIcons]?.icon}</span>
+            <div>
+              <p className="text-purple-700 dark:text-purple-300">
+                Showing snippets in <span className="font-semibold">{filters.language}</span>
+                <span className="ml-2 text-sm text-purple-600 dark:text-purple-400">
+                  ({languageCounts[filters.language] || 0} snippets)
+                </span>
+              </p>
+              {filteredSnippets.length === 0 && (
+                <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
+                  No snippets found. Try adjusting your filters or create a new snippet.
                 </p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
-                <div className="relative rounded-lg overflow-hidden mb-4">
-                  <SyntaxHighlighter
-                    language={snippet.language}
-                    style={vscDarkPlus}
-                    customStyle={{
-                      margin: 0,
-                      borderRadius: '0.5rem',
-                      background: 'rgba(0, 0, 0, 0.2)',
-                    }}
-                  >
-                    {snippet.code}
-                  </SyntaxHighlighter>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
+        <AnimatePresence>
+          {filteredSnippets.map((snippet) => (
+            <motion.div
+              key={snippet._id}
+              variants={itemVariants}
+              layout
+              className="bg-white dark:bg-gray-800/50 backdrop-blur-lg rounded-lg overflow-hidden border border-gray-200 dark:border-white/10 shadow-lg"
+            >
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                      {snippet.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
+                      {snippet.description}
+                    </p>
+                  </div>
                   <button
-                    onClick={() => handleCopyCode(snippet.code)}
-                    className="absolute top-2 right-2 p-2 rounded-lg bg-gray-800/50 hover:bg-gray-800/70 text-white"
+                    onClick={() => handleFavorite(snippet._id)}
+                    className="text-gray-400 hover:text-yellow-400 transition-colors"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
-                      />
-                    </svg>
+                    {snippet.favorites.includes(user?._id || '') ? '★' : '☆'}
                   </button>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mb-4">
+                <div className="flex flex-wrap gap-2 mb-3">
                   {snippet.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full"
+                      className="px-2 py-1 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-full text-xs"
                     >
                       {tag}
                     </span>
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center">
-                    <svg
-                      className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    {new Date(snippet.createdAt).toLocaleDateString()}
+                <div className="relative group">
+                  <SyntaxHighlighter
+                    language={snippet.language}
+                    style={vscDarkPlus}
+                    className="rounded-lg !bg-gray-100 dark:!bg-gray-900/50 !m-0"
+                    customStyle={{
+                      margin: 0,
+                      borderRadius: '0.5rem',
+                      background: 'rgba(243, 244, 246, 0.5)',
+                    }}
+                  >
+                    {snippet.code}
+                  </SyntaxHighlighter>
+                  <button
+                    onClick={() => handleCopyCode(snippet.code)}
+                    className="absolute top-2 right-2 p-2 bg-white/80 dark:bg-gray-800/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  >
+                    📋
+                  </button>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-1 rounded flex items-center space-x-1 ${
+                      languageIcons[snippet.language as keyof typeof languageIcons]?.color
+                    } ${languageIcons[snippet.language as keyof typeof languageIcons]?.darkColor}`}>
+                      <span>{languageIcons[snippet.language as keyof typeof languageIcons]?.icon}</span>
+                      <span>{snippet.language}</span>
+                    </span>
+                    {!snippet.isPublic && (
+                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300">
+                        Private
+                      </span>
+                    )}
                   </div>
                   <Link
                     to={`/editor/${snippet._id}`}
-                    className="text-purple-500 hover:text-purple-600 dark:text-purple-400 dark:hover:text-purple-300"
+                    className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
                   >
                     Edit
                   </Link>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </AnimatePresence>
+      </motion.div>
+
+      {filteredSnippets.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center text-gray-600 dark:text-gray-400 py-8"
+        >
+          {filters.language && filters.language !== 'All' ? (
+            <div>
+              <p className="mb-2">No snippets found in {filters.language}.</p>
+              <p className="text-sm">Try selecting a different language or create a new snippet.</p>
+            </div>
+          ) : (
+            <p>No snippets found. Try adjusting your filters or create a new snippet.</p>
+          )}
+        </motion.div>
       )}
     </div>
   );

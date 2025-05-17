@@ -1,86 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Snippet, SnippetFormData } from '../types/snippet';
-import { API_URL } from '../api/config';
-
-const languages = [
-  'javascript',
-  'typescript',
-  'python',
-  'java',
-  'cpp',
-  'csharp',
-  'php',
-  'ruby',
-  'swift',
-  'go',
-  'rust',
-  'html',
-  'css',
-  'sql',
-  'bash',
-  'json',
-  'yaml',
-  'markdown',
-];
-
-const commonTags = [
-  'Frontend',
-  'Backend',
-  'Database',
-  'API',
-  'Security',
-  'React',
-  'Node.js',
-  'Python',
-  'TypeScript',
-  'JavaScript',
-];
+import { languages } from '../utils/languages';
 
 const SnippetEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [snippet, setSnippet] = useState<SnippetFormData>({
     title: '',
-    language: 'javascript',
-    code: '',
     description: '',
+    code: '',
+    language: 'javascript',
     tags: [],
     isPublic: false,
   });
   const [newTag, setNewTag] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchSnippet();
+    } else {
+      setLoading(false);
     }
   }, [id]);
 
   const fetchSnippet = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`${API_URL}/api/snippets/${id}`, {
+      const response = await fetch(`/api/snippets/${id}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch snippet');
-      }
-
+      if (!response.ok) throw new Error('Failed to fetch snippet');
       const data = await response.json();
-      setSnippet(data);
+      setSnippet({
+        title: data.title,
+        description: data.description,
+        code: data.code,
+        language: data.language,
+        tags: data.tags,
+        isPublic: data.isPublic,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError('Failed to load snippet');
+      console.error('Error fetching snippet:', err);
     } finally {
       setLoading(false);
     }
@@ -88,41 +57,41 @@ const SnippetEditor: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
+    setSaving(true);
     setError('');
 
     try {
-      const url = id
-        ? `${API_URL}/api/snippets/${id}`
-        : `${API_URL}/api/snippets`;
-      
+      const url = id ? `/api/snippets/${id}` : '/api/snippets';
       const method = id ? 'PUT' : 'POST';
-
+      
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(snippet),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save snippet');
-      }
-
+      if (!response.ok) throw new Error('Failed to save snippet');
+      
       const data = await response.json();
-      navigate('/');
+      navigate(`/snippets/${data._id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError('Failed to save snippet');
+      console.error('Error saving snippet:', err);
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
-  const handleAddTag = () => {
-    if (newTag && !snippet.tags.includes(newTag)) {
-      setSnippet({ ...snippet, tags: [...snippet.tags, newTag] });
+  const handleAddTag = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newTag.trim() && !snippet.tags.includes(newTag.trim())) {
+      setSnippet({
+        ...snippet,
+        tags: [...snippet.tags, newTag.trim()],
+      });
       setNewTag('');
     }
   };
@@ -130,30 +99,27 @@ const SnippetEditor: React.FC = () => {
   const handleRemoveTag = (tagToRemove: string) => {
     setSnippet({
       ...snippet,
-      tags: snippet.tags.filter((tag) => tag !== tagToRemove),
+      tags: snippet.tags.filter(tag => tag !== tagToRemove),
     });
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleAddTag();
-    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+      <div className="flex items-center justify-center h-full">
+        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-4xl mx-auto p-6"
+    >
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor="title" className="block text-sm font-medium text-gray-300">
             Title
           </label>
           <input
@@ -161,20 +127,35 @@ const SnippetEditor: React.FC = () => {
             id="title"
             value={snippet.title}
             onChange={(e) => setSnippet({ ...snippet, title: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             required
+            className="mt-1 block w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+            placeholder="Enter snippet title"
           />
         </div>
 
         <div>
-          <label htmlFor="language" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-300">
+            Description
+          </label>
+          <textarea
+            id="description"
+            value={snippet.description}
+            onChange={(e) => setSnippet({ ...snippet, description: e.target.value })}
+            rows={3}
+            className="mt-1 block w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+            placeholder="Enter snippet description"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="language" className="block text-sm font-medium text-gray-300">
             Language
           </label>
           <select
             id="language"
             value={snippet.language}
-            onChange={(e) => setSnippet({ ...snippet, language: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            onChange={(e) => setSnippet({ ...snippet, language: e.target.value as any })}
+            className="mt-1 block w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
           >
             {languages.map((lang) => (
               <option key={lang} value={lang}>
@@ -185,20 +166,7 @@ const SnippetEditor: React.FC = () => {
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Description
-          </label>
-          <textarea
-            id="description"
-            value={snippet.description}
-            onChange={(e) => setSnippet({ ...snippet, description: e.target.value })}
-            rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="code" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor="code" className="block text-sm font-medium text-gray-300">
             Code
           </label>
           <div className="mt-1 relative">
@@ -206,17 +174,18 @@ const SnippetEditor: React.FC = () => {
               id="code"
               value={snippet.code}
               onChange={(e) => setSnippet({ ...snippet, code: e.target.value })}
-              rows={15}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono"
               required
+              rows={15}
+              className="block w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+              placeholder="Enter your code here"
             />
-            <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-2 right-2">
               <SyntaxHighlighter
                 language={snippet.language}
                 style={vscDarkPlus}
+                className="rounded-lg !bg-transparent !m-0 pointer-events-none"
                 customStyle={{
                   margin: 0,
-                  borderRadius: '0.375rem',
                   background: 'transparent',
                 }}
               >
@@ -227,63 +196,41 @@ const SnippetEditor: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
             Tags
           </label>
           <div className="flex flex-wrap gap-2 mb-2">
             {snippet.tags.map((tag) => (
-              <motion.span
+              <span
                 key={tag}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300"
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-500/20 text-purple-300"
               >
                 {tag}
                 <button
                   type="button"
                   onClick={() => handleRemoveTag(tag)}
-                  className="ml-2 hover:text-purple-900 dark:hover:text-purple-100"
+                  className="ml-2 text-purple-300 hover:text-purple-100"
                 >
                   ×
                 </button>
-              </motion.span>
+              </span>
             ))}
           </div>
-          <div className="flex gap-2">
+          <form onSubmit={handleAddTag} className="flex gap-2">
             <input
               type="text"
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
-              onKeyPress={handleKeyPress}
+              className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
               placeholder="Add a tag"
-              className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
             <button
-              type="button"
-              onClick={handleAddTag}
-              className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              type="submit"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-200"
             >
               Add
             </button>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {commonTags
-              .filter((tag) => !snippet.tags.includes(tag))
-              .map((tag) => (
-                <motion.button
-                  key={tag}
-                  type="button"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setSnippet({ ...snippet, tags: [...snippet.tags, tag] });
-                  }}
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
-                >
-                  {tag}
-                </motion.button>
-              ))}
-          </div>
+          </form>
         </div>
 
         <div className="flex items-center">
@@ -292,38 +239,44 @@ const SnippetEditor: React.FC = () => {
             id="isPublic"
             checked={snippet.isPublic}
             onChange={(e) => setSnippet({ ...snippet, isPublic: e.target.checked })}
-            className="h-4 w-4 text-purple-500 focus:ring-purple-500 border-gray-300 rounded"
+            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
           />
-          <label htmlFor="isPublic" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+          <label htmlFor="isPublic" className="ml-2 block text-sm text-gray-300">
             Make this snippet public
           </label>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <strong className="font-bold">Error!</strong>
-            <span className="block sm:inline"> {error}</span>
+          <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg">
+            {error}
           </div>
         )}
 
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end gap-4">
           <button
             type="button"
-            onClick={() => navigate('/')}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+            onClick={() => navigate(-1)}
+            className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-200"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isSaving}
-            className="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={saving}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : id ? 'Update Snippet' : 'Create Snippet'}
+            {saving ? (
+              <div className="flex items-center">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Saving...
+              </div>
+            ) : (
+              'Save Snippet'
+            )}
           </button>
         </div>
       </form>
-    </div>
+    </motion.div>
   );
 };
 

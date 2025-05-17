@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -8,11 +8,16 @@ import SnippetEditor from './components/SnippetEditor';
 import Login from './components/Login';
 import Register from './components/Register';
 import DarkModeToggle from './components/DarkModeToggle';
+import SnippetsPage from './pages/SnippetsPage';
 
 const AppContent: React.FC = () => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -45,12 +50,14 @@ const AppContent: React.FC = () => {
         user={user}
         onLogout={logout}
       />
-      <div className="flex">
+      <div className="flex pt-16">
         <Sidebar isOpen={isSidebarOpen} />
         <main className={`flex-1 p-6 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
           <Routes>
-            <Route path="/" element={<SnippetList />} />
+            <Route path="/" element={<SnippetsPage />} />
+            <Route path="/snippets" element={<SnippetsPage />} />
             <Route path="/editor/:id?" element={<SnippetEditor />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

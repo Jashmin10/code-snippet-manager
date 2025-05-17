@@ -1,94 +1,93 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React from 'react';
 import { Link } from 'react-router-dom';
-
-const languages = [
-  'All',
-  'JavaScript',
-  'TypeScript',
-  'Python',
-  'Java',
-  'C++',
-  'C#',
-  'Ruby',
-  'PHP',
-  'Go',
-  'Rust',
-  'Swift',
-];
+import { motion } from 'framer-motion';
+import { languages } from '../utils/languages';
+import { languageIcons } from '../utils/languageIcons';
+import { Snippet } from '../types/snippet';
 
 interface SidebarProps {
-  isOpen: boolean;
+  isOpen?: boolean;
+  snippets?: Snippet[];
+  selectedLanguage?: string;
+  onLanguageSelect?: (language: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
-  const [selectedLanguage, setSelectedLanguage] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
+const Sidebar: React.FC<SidebarProps> = ({ 
+  isOpen = true,
+  snippets = [],
+  selectedLanguage = 'All',
+  onLanguageSelect = () => {}
+}) => {
+  // Calculate snippet counts per language
+  const languageCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    snippets.forEach(snippet => {
+      counts[snippet.language] = (counts[snippet.language] || 0) + 1;
+    });
+    return counts;
+  }, [snippets]);
 
   return (
-    <aside className={`fixed left-0 top-16 h-full w-64 bg-white dark:bg-gray-800 shadow-lg transition-transform duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-      <div className="p-4">
-        <nav className="space-y-2">
-          <Link
-            to="/"
-            className="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+    <div className={`w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen pt-6 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="px-4">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+          <span className="mr-2">📚</span>
+          Languages
+        </h2>
+        <div className="space-y-2">
+          <motion.button
+            whileHover={{ x: 4, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onLanguageSelect('All')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-base transition-all ${
+              selectedLanguage === 'All'
+                ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+            }`}
           >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            All Snippets
-          </Link>
-          <Link
-            to="/editor"
-            className="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-          >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            New Snippet
-          </Link>
-        </nav>
+            <div className="flex items-center space-x-3">
+              <span className="text-xl">🌐</span>
+              <span className="font-medium">All Languages</span>
+            </div>
+            <span className="text-sm bg-gray-200 dark:bg-gray-700 px-2.5 py-1 rounded-full font-medium">
+              {snippets.length}
+            </span>
+          </motion.button>
 
-        <div className="mt-6">
-          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            Languages
-          </h3>
-          <div className="mt-2 space-y-1">
-            {languages.map((language) => (
-              <motion.button
-                key={language}
-                whileHover={{ x: 5 }}
-                onClick={() => setSelectedLanguage(language)}
-                className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                  selectedLanguage === language
-                    ? 'bg-purple-500 text-white'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-              >
-                {language}
-              </motion.button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            Tags
-          </h3>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {['Frontend', 'Backend', 'Database', 'API', 'Security'].map((tag) => (
-              <motion.button
-                key={tag}
-                whileHover={{ scale: 1.05 }}
-                className="px-3 py-1 rounded-full text-sm bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300"
-              >
-                {tag}
-              </motion.button>
-            ))}
-          </div>
+          {languages.map((language) => (
+            <motion.button
+              key={language}
+              whileHover={{ x: 4, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onLanguageSelect(language)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-base transition-all ${
+                selectedLanguage === language
+                  ? `${languageIcons[language].color} ${languageIcons[language].darkColor} shadow-sm`
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-xl">{languageIcons[language].icon}</span>
+                <span className="font-medium">{language}</span>
+              </div>
+              <span className="text-sm bg-gray-200 dark:bg-gray-700 px-2.5 py-1 rounded-full font-medium">
+                {languageCounts[language] || 0}
+              </span>
+            </motion.button>
+          ))}
         </div>
       </div>
-    </aside>
+
+      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
+        <Link
+          to="/editor/new"
+          className="w-full flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-xl transition-all text-base font-medium shadow-sm hover:shadow-md"
+        >
+          <span className="text-xl">+</span>
+          <span>New Snippet</span>
+        </Link>
+      </div>
+    </div>
   );
 };
 
