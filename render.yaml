@@ -1,0 +1,16 @@
+services:
+  - name: frontend
+    type: web
+    buildCommand: "cd client && npm install && npm run build"
+    startCommand: "serve -s client/build"
+    env:
+      PORT: "3000"
+
+  - name: backend
+    type: web
+    buildCommand: "npm install"
+    startCommand: "node server.js"
+    env:
+      PORT: "5000"
+      MONGODB_URI: "${MONGODB_URI}"
+      JWT_SECRET: "${JWT_SECRET}"

@@ -13,13 +13,10 @@ JWT_SECRET = "your_jwt_secret"
 region = "ap-south-1"  # Mumbai region
 
 [frontend]
-build = "npm install && npm run build"
+build = "npm run build"
 start = "serve -s build"
 
 [backend]
 build = "npm install"
 start = "node server.js"
-
-[config]
-file = "railway.config.js"
 
