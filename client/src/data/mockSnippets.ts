@@ -2,7 +2,7 @@ import { Snippet } from '../types/snippet';
 
 export const mockSnippets: Snippet[] = [
   {
-    _id: '1',
+    id: '1',
     title: 'React Custom Hook for Dark Mode',
     description: 'A reusable hook to manage dark mode state with local storage persistence',
     code: `import { useState, useEffect } from 'react';
@@ -25,17 +25,12 @@ export default useDarkMode;`,
     language: 'typescript',
     tags: ['react', 'hooks', 'dark-mode', 'typescript'],
     isPublic: true,
-    user: {
-      _id: 'user1',
-      name: 'John Doe',
-      email: 'john@example.com'
-    },
     favorites: ['user2', 'user3'],
     createdAt: new Date('2024-03-15').toISOString(),
     updatedAt: new Date('2024-03-15').toISOString()
   },
   {
-    _id: '2',
+    id: '2',
     title: 'Express Error Handler Middleware',
     description: 'A centralized error handling middleware for Express applications',
     code: `const errorHandler = (err, req, res, next) => {
@@ -53,17 +48,12 @@ module.exports = errorHandler;`,
     language: 'javascript',
     tags: ['express', 'middleware', 'error-handling', 'nodejs'],
     isPublic: true,
-    user: {
-      _id: 'user2',
-      name: 'Jane Smith',
-      email: 'jane@example.com'
-    },
     favorites: ['user1'],
     createdAt: new Date('2024-03-14').toISOString(),
     updatedAt: new Date('2024-03-14').toISOString()
   },
   {
-    _id: '3',
+    id: '3',
     title: 'Python Data Class Example',
     description: 'Example of using Python dataclasses for clean data structures',
     code: `from dataclasses import dataclass
@@ -91,17 +81,12 @@ user = User(
     language: 'python',
     tags: ['python', 'dataclasses', 'type-hints'],
     isPublic: false,
-    user: {
-      _id: 'user1',
-      name: 'John Doe',
-      email: 'john@example.com'
-    },
     favorites: [],
     createdAt: new Date('2024-03-13').toISOString(),
     updatedAt: new Date('2024-03-13').toISOString()
   },
   {
-    _id: '4',
+    id: '4',
     title: 'Tailwind CSS Card Component',
     description: 'A reusable card component using Tailwind CSS with hover effects',
     code: `<div className="group relative bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
@@ -118,17 +103,12 @@ user = User(
     language: 'html',
     tags: ['tailwind', 'css', 'components', 'ui'],
     isPublic: true,
-    user: {
-      _id: 'user3',
-      name: 'Mike Johnson',
-      email: 'mike@example.com'
-    },
     favorites: ['user1', 'user2'],
     createdAt: new Date('2024-03-12').toISOString(),
     updatedAt: new Date('2024-03-12').toISOString()
   },
   {
-    _id: '5',
+    id: '5',
     title: 'TypeScript API Response Type',
     description: 'Type definitions for API responses with error handling',
     code: `interface ApiResponse<T> {
@@ -157,11 +137,6 @@ const response: ApiResponse<User> = {
     language: 'typescript',
     tags: ['typescript', 'api', 'types', 'interfaces'],
     isPublic: true,
-    user: {
-      _id: 'user2',
-      name: 'Jane Smith',
-      email: 'jane@example.com'
-    },
     favorites: ['user3'],
     createdAt: new Date('2024-03-11').toISOString(),
     updatedAt: new Date('2024-03-11').toISOString()

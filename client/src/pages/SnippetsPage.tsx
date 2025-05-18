@@ -1,69 +1,146 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import SnippetList from '../components/SnippetList';
 import SnippetFilters from '../components/SnippetFilters';
-// import Sidebar from '../components/Sidebar';
+import SnippetList from '../components/SnippetList';
+import SnippetModal from '../components/SnippetModal';
 import { Snippet, SnippetFilters as SnippetFiltersType } from '../types/snippet';
 import { mockSnippets } from '../data/mockSnippets';
 
-const SnippetsPage: React.FC = () => {
-  const [snippets, setSnippets] = useState<Snippet[]>([]);
-  const [loading, setLoading] = useState(true);
+interface SnippetsPageProps {
+  selectedLanguage: string;
+}
+
+const SnippetsPage: React.FC<SnippetsPageProps> = ({ selectedLanguage }) => {
   const [filters, setFilters] = useState<SnippetFiltersType>({
     search: '',
     language: 'All',
     tags: [],
     isPublic: undefined
   });
+  const [snippets, setSnippets] = useState<Snippet[]>(mockSnippets);
+  const [isSnippetModalOpen, setIsSnippetModalOpen] = useState(false);
 
   useEffect(() => {
-    // Simulate API call with mock data
-    setLoading(true);
-    setTimeout(() => {
-      setSnippets(mockSnippets);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    // Initialize with mock data and sync language
+    setSnippets(mockSnippets);
+    setFilters({
+      search: '',
+      language: selectedLanguage,
+      tags: [],
+      isPublic: undefined
+    });
+  }, [selectedLanguage]);
 
-  const handleLanguageSelect = (language: string) => {
-    setFilters(prev => ({
-      ...prev,
-      language
-    }));
+  const handleFilterChange = (newFilters: SnippetFiltersType) => {
+    setFilters(newFilters);
   };
 
+  // Handle tag selection
+  const handleTagSelect = (tag: string) => {
+    setFilters(prev => {
+      const newTags = prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag];
+      return { ...prev, tags: newTags };
+    });
+  };
+
+  // Get unique tags and languages from snippets
+  const availableTags = Array.from(new Set(snippets.flatMap(s => s.tags)));
+  const availableLanguages = Array.from(new Set(snippets.map(s => s.language)));
+
+  // Filter snippets based on current filters
+  // Count total snippets and filtered snippets
+  const totalSnippets = snippets.length;
+  const filteredSnippets = snippets.filter((snippet) => {
+    // Filter by language first
+    if (filters.language !== 'All' && snippet.language !== filters.language) {
+      return false;
+    }
+
+    // Filter by search term
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      if (!snippet.title.toLowerCase().includes(searchTerm) &&
+          !snippet.description.toLowerCase().includes(searchTerm) &&
+          !snippet.code.toLowerCase().includes(searchTerm)) {
+        return false;
+      }
+    }
+
+    // Filter by tags
+    if (filters.tags.length > 0) {
+      if (!filters.tags.every(tag => snippet.tags.includes(tag))) {
+        return false;
+      }
+    }
+
+    // Filter by public/private
+    if (filters.isPublic !== undefined && snippet.isPublic !== filters.isPublic) {
+      return false;
+    }
+
+    return true;
+  });
+
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar removed from here */}
-      <div className="flex-1">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-[1600px] mx-auto px-6 py-6"
-        >
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Code Snippets
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Browse and manage your code snippets
-            </p>
-          </div>
+    <div className="flex-1">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-[1600px] mx-auto px-6 py-6"
+      >
+        <div className="mb-6">
 
-          <SnippetFilters
-            filters={filters}
-            onFilterChange={setFilters}
-            availableTags={Array.from(new Set(snippets.flatMap(s => s.tags)))}
-            availableLanguages={Array.from(new Set(snippets.map(s => s.language)))}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-extrabold text-gradient bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent mb-3">
+                Code Snippets
+              </h1>
+              <p className="text-lg text-gray-400 font-medium tracking-wider">
+                Browse and manage your code snippets
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-400">Total:</span>
+                <span className="font-medium text-purple-500">{totalSnippets}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-400">Showing:</span>
+                <span className="font-medium text-purple-500">{filteredSnippets.length}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <SnippetFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onTagSelect={handleTagSelect}
+          availableTags={availableTags}
+          availableLanguages={availableLanguages}
+        />
+
+        <div className="mt-6">
+          <SnippetList 
+            snippets={filteredSnippets}
+            selectedLanguage={selectedLanguage}
+            onLanguageSelect={() => {}}
+            onSnippetSelect={() => {}}
           />
-
-          <div className="mt-6">
-            <SnippetList filters={filters} />
-          </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
+      <SnippetModal
+        isOpen={isSnippetModalOpen}
+        onClose={() => setIsSnippetModalOpen(false)}
+        onSnippetCreated={(newSnippet) => {
+          // Add new snippet to the list
+          setSnippets(prev => [...prev, newSnippet]);
+        }}
+      />
     </div>
   );
 };
 
-export default SnippetsPage; 
+export default SnippetsPage;

@@ -1,122 +1,87 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { User } from '../types/user';
 
 interface NavbarProps {
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
   toggleSidebar: () => void;
-  user: User;
+  isSidebarOpen: boolean;
+  user: any;
   onLogout: () => void;
+  onNewSnippet: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({
-  isDarkMode,
-  toggleDarkMode,
-  toggleSidebar,
-  user,
-  onLogout
-}) => {
+const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, user, onLogout, isSidebarOpen, onNewSnippet }) => {
   return (
-    <nav className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800/50 backdrop-blur-lg border-b border-gray-200 dark:border-white/10 z-50">
-      <div className="h-full px-4 flex items-center justify-between">
+    <nav className="fixed w-full z-50">
+      <div className="bg-gradient-to-r from-purple-900 to-gray-900 h-20 flex items-center justify-between px-4 sm:px-6">
         <div className="flex items-center space-x-4">
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className={`flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-400/50 ${
+              isSidebarOpen
+                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white'
+                : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700/80'
+            }`}
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
+            <div className="w-8 h-8 relative">
+              <div className={`absolute inset-0 flex items-center justify-center`}>
+                <div className={`w-6 h-0.5 bg-current rounded-full transform transition-all duration-300 ${
+                  isSidebarOpen ? 'rotate-45' : 'translate-y-0'
+                }`} />
+                <div className={`w-6 h-0.5 bg-current rounded-full transform transition-all duration-300 ${
+                  isSidebarOpen ? 'translate-y-3 rotate-45' : 'translate-y-3'
+                }`} />
+                <div className={`w-6 h-0.5 bg-current rounded-full transform transition-all duration-300 ${
+                  isSidebarOpen ? '-translate-y-3 -rotate-45' : '-translate-y-3'
+                }`} />
+              </div>
+            </div>
           </button>
-          <Link
-            to="/"
-            className="text-xl font-bold text-gray-900 dark:text-white"
-          >
-            CodeSnippets
-          </Link>
+          <div className="flex items-center space-x-2">
+            <Link
+              to="/"
+              className="text-white text-2xl font-bold tracking-wider"
+            >
+              <span className="text-purple-400">Code</span>Snippets
+            </Link>
+            <button
+              onClick={onNewSnippet}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400/50"
+            >
+              <span className="flex items-center space-x-1">
+                <span className="flex items-center space-x-1">
+                  <span>New Snippet</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </span>
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center space-x-4">
+          <span className="text-purple-400 text-sm font-medium flex items-center space-x-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>Welcome, {user?.name || 'Guest'}</span>
+          </span>
           <button
-            onClick={toggleDarkMode}
-            className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            onClick={onLogout}
+            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400/50"
           >
-            {isDarkMode ? (
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
+            <span className="flex items-center space-x-1">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-            ) : (
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-            )}
+              <span>Logout</span>
+            </span>
           </button>
-
-          <div className="relative group">
-            <button className="flex items-center space-x-2 p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-              <span className="text-sm font-medium">{user.name}</span>
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-
-            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-white/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-              <div className="py-1">
-                <button
-                  onClick={onLogout}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Sign out
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
+      <div className="absolute bottom-0 left-0 w-full h-2 bg-gradient-to-r from-purple-600 to-purple-700" />
     </nav>
   );
 };
 
-export default Navbar; 
+export default Navbar;

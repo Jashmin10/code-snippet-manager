@@ -13,7 +13,7 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -25,7 +25,7 @@ const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      await register(name, email, password);
+      register(email, password);
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to register');

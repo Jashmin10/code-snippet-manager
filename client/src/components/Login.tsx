@@ -11,13 +11,13 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await login(email, password);
+      login(email, password);
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to login');

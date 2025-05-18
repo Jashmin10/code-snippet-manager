@@ -1,295 +1,121 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useAuth } from '../context/AuthContext';
-import { Snippet, SnippetFilters as SnippetFiltersType } from '../types/snippet';
-import { mockSnippets } from '../data/mockSnippets';
-import { languageIcons } from '../utils/languageIcons';
+import { format } from 'date-fns';
+import Toast from './Toast';
 
-interface SnippetListProps {
-  filters: SnippetFiltersType;
+interface Snippet {
+  id: string;
+  title: string;
+  description: string;
+  code: string;
+  language: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-const SnippetList: React.FC<SnippetListProps> = ({ filters }) => {
-  const [snippets, setSnippets] = useState<Snippet[]>([]);
-  const [filteredSnippets, setFilteredSnippets] = useState<Snippet[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { user } = useAuth();
+interface SnippetListProps {
+  snippets: Snippet[];
+  selectedLanguage: string;
+  onLanguageSelect: (language: string) => void;
+  onSnippetSelect: (snippet: Snippet) => void;
+}
 
-  // Calculate snippet counts per language
-  const languageCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {};
-    snippets.forEach(snippet => {
-      counts[snippet.language] = (counts[snippet.language] || 0) + 1;
-    });
-    return counts;
-  }, [snippets]);
+const SnippetList: React.FC<SnippetListProps> = ({ snippets, selectedLanguage, onLanguageSelect, onSnippetSelect }) => {
 
-  useEffect(() => {
-    // Simulate API call with mock data
-    setLoading(true);
-    setTimeout(() => {
-      setSnippets(mockSnippets);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  const [toastMessage, setToastMessage] = useState('');
 
-  useEffect(() => {
-    filterSnippets();
-  }, [snippets, filters]);
-
-  const filterSnippets = () => {
-    let filtered = [...snippets];
-
-    // Apply search filter
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(snippet =>
-        snippet.title.toLowerCase().includes(searchLower) ||
-        snippet.description.toLowerCase().includes(searchLower) ||
-        snippet.code.toLowerCase().includes(searchLower) ||
-        snippet.tags.some(tag => tag.toLowerCase().includes(searchLower))
-      );
-    }
-
-    // Apply language filter
-    if (filters.language && filters.language !== 'All') {
-      filtered = filtered.filter(snippet => 
-        snippet.language.toLowerCase() === filters.language.toLowerCase()
-      );
-    }
-
-    // Apply tags filter
-    if (filters.tags.length > 0) {
-      filtered = filtered.filter(snippet =>
-        filters.tags.every(tag => snippet.tags.includes(tag))
-      );
-    }
-
-    // Apply public/private filter
-    if (filters.isPublic !== undefined) {
-      filtered = filtered.filter(snippet => snippet.isPublic === filters.isPublic);
-    }
-
-    setFilteredSnippets(filtered);
-  };
-
-  const handleCopyCode = async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      // You could add a toast notification here
-    } catch (err) {
-      console.error('Failed to copy code:', err);
-    }
-  };
-
-  const handleFavorite = async (snippetId: string) => {
-    try {
-      // Simulate API call
-      const updatedSnippets = snippets.map(snippet => {
-        if (snippet._id === snippetId) {
-          const isFavorited = snippet.favorites.includes(user?._id || '');
-          return {
-            ...snippet,
-            favorites: isFavorited
-              ? snippet.favorites.filter(id => id !== user?._id)
-              : [...snippet.favorites, user?._id || '']
-          };
-        }
-        return snippet;
-      });
-      setSnippets(updatedSnippets);
-    } catch (err) {
-      console.error('Error toggling favorite:', err);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-red-500 text-center p-4">
-        {error}
-      </div>
-    );
-  }
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 10
-      }
-    },
-    exit: {
-      opacity: 0,
-      y: -20,
-      transition: {
-        duration: 0.2
-      }
-    }
-  };
-
+  const hasSnippets = snippets.length > 0;
+  
   return (
-    <div className="space-y-6">
-      {/* Language Filter Info */}
-      {filters.language && filters.language !== 'All' && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4"
-        >
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">{languageIcons[filters.language as keyof typeof languageIcons]?.icon}</span>
-            <div>
-              <p className="text-purple-700 dark:text-purple-300">
-                Showing snippets in <span className="font-semibold">{filters.language}</span>
-                <span className="ml-2 text-sm text-purple-600 dark:text-purple-400">
-                  ({languageCounts[filters.language] || 0} snippets)
-                </span>
-              </p>
-              {filteredSnippets.length === 0 && (
-                <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-                  No snippets found. Try adjusting your filters or create a new snippet.
+    <div className="space-y-4">
+      {hasSnippets ? (
+        snippets.map((snippet: Snippet) => (
+          <div
+            key={snippet.id}
+            className="bg-gradient-to-br from-gray-800/95 to-gray-900/95 rounded-2xl p-4 hover:shadow-lg transition-all duration-300"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold text-white/90 hover:text-white transition-colors duration-300">
+                  {snippet.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                  {snippet.description}
                 </p>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        <AnimatePresence>
-          {filteredSnippets.map((snippet) => (
-            <motion.div
-              key={snippet._id}
-              variants={itemVariants}
-              layout
-              className="bg-white dark:bg-gray-800/50 backdrop-blur-lg rounded-lg overflow-hidden border border-gray-200 dark:border-white/10 shadow-lg"
-            >
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                      {snippet.title}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                      {snippet.description}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleFavorite(snippet._id)}
-                    className="text-gray-400 hover:text-yellow-400 transition-colors"
-                  >
-                    {snippet.favorites.includes(user?._id || '') ? '★' : '☆'}
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {snippet.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-1 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-full text-xs"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="relative group">
-                  <SyntaxHighlighter
-                    language={snippet.language}
-                    style={vscDarkPlus}
-                    className="rounded-lg !bg-gray-100 dark:!bg-gray-900/50 !m-0"
-                    customStyle={{
-                      margin: 0,
-                      borderRadius: '0.5rem',
-                      background: 'rgba(243, 244, 246, 0.5)',
-                    }}
-                  >
-                    {snippet.code}
-                  </SyntaxHighlighter>
-                  <button
-                    onClick={() => handleCopyCode(snippet.code)}
-                    className="absolute top-2 right-2 p-2 bg-white/80 dark:bg-gray-800/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                  >
-                    📋
-                  </button>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded flex items-center space-x-1 ${
-                      languageIcons[snippet.language as keyof typeof languageIcons]?.color
-                    } ${languageIcons[snippet.language as keyof typeof languageIcons]?.darkColor}`}>
-                      <span>{languageIcons[snippet.language as keyof typeof languageIcons]?.icon}</span>
-                      <span>{snippet.language}</span>
-                    </span>
-                    {!snippet.isPublic && (
-                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300">
-                        Private
-                      </span>
-                    )}
-                  </div>
-                  <Link
-                    to={`/editor/${snippet._id}`}
-                    className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
-                  >
-                    Edit
-                  </Link>
+                <div className="flex items-center space-x-2 mt-2">
+                  <span className="px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">
+                    {snippet.language}
+                  </span>
                 </div>
               </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </motion.div>
-
-      {filteredSnippets.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center text-gray-600 dark:text-gray-400 py-8"
-        >
-          {filters.language && filters.language !== 'All' ? (
-            <div>
-              <p className="mb-2">No snippets found in {filters.language}.</p>
-              <p className="text-sm">Try selecting a different language or create a new snippet.</p>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(snippet.code);
+                    setToastMessage('Code copied to clipboard!');
+                  }}
+                  className="group flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-gray-800/50 to-gray-900/50 hover:from-gray-700/50 hover:to-gray-800/50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400/50"
+                  title="Copy code to clipboard"
+                >
+                  <svg className="w-5 h-5 text-purple-400 group-hover:text-purple-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onSnippetSelect(snippet)}
+                  className="group flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-gray-800/50 to-gray-900/50 hover:from-gray-700/50 hover:to-gray-800/50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400/50"
+                  title="View snippet details"
+                >
+                  <svg className="w-5 h-5 text-purple-400 group-hover:text-purple-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
-          ) : (
-            <p>No snippets found. Try adjusting your filters or create a new snippet.</p>
-          )}
-        </motion.div>
+            <div className="mt-4">
+              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-800/95 to-gray-900/95 border border-gray-800/50">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-900/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute top-0 right-0 p-3">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(snippet.code);
+                      setToastMessage('Code copied to clipboard!');
+                    }}
+                    className="group flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-gray-800/50 to-gray-900/50 hover:from-gray-700/50 hover:to-gray-800/50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400/50"
+                    title="Copy code to clipboard"
+                  >
+                    <svg className="w-5 h-5 text-purple-400 group-hover:text-purple-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
+                </div>
+                <pre className="p-6 overflow-x-auto">
+                  <code className="text-white/90 text-sm leading-relaxed">
+                    {snippet.code}
+                  </code>
+                </pre>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-purple-700" />
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-purple-700" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{format(new Date(snippet.createdAt), 'MMM d, yyyy')}</span>
+              </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="text-center text-gray-500 dark:text-gray-400">
+          <p>No snippets match your search criteria</p>
+        </div>
       )}
     </div>
   );
 };
 
-export default SnippetList; 
+export default SnippetList;

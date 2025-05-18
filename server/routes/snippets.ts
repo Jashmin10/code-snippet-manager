@@ -1,40 +1,59 @@
-import express from 'express';
-import Snippet, { ISnippet } from '../models/Snippet';
+import express, { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
+import { Snippet, ISnippet } from '../models/Snippet';
 import { auth } from '../middleware/auth';
 
-interface AuthRequest extends express.Request {
-  user?: any;
+// Type for authenticated request with user
+interface AuthRequest extends Request {
+  user: { _id: string };
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { _id: string };
+    }
+  }
+}
+
+// Type for route parameters
+interface SnippetParams {
+  id: string;
+}
+
+// Type for authenticated route handlers
+interface AuthenticatedRequestHandler {
+  (req: AuthRequest & { params: SnippetParams }, res: Response, next: NextFunction): void;
 }
 
 const router = express.Router();
 
 // Get all snippets (public or user's own)
-router.get('/', auth, async (req: AuthRequest, res) => {
+router.get('/', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { language, search, tags, isPublic } = req.query;
-    let query: any = {};
+    const query: any = {};
 
     // Show public snippets or user's own snippets
     query.$or = [
       { isPublic: true },
-      { user: req.user._id }
+      { userId: new mongoose.Types.ObjectId((req as AuthRequest).user._id) }
     ];
 
-    if (language && language !== 'All') {
-      query.language = language;
+    if (req.query.language && req.query.language !== 'All') {
+      query.language = req.query.language;
     }
 
-    if (search) {
-      query.$text = { $search: search as string };
+    if (req.query.search) {
+      query.$text = { $search: req.query.search };
     }
 
-    if (tags) {
-      const tagArray = (tags as string).split(',');
+    if (req.query.tags) {
+      const tagArray = (req.query.tags as string).split(',');
       query.tags = { $all: tagArray };
     }
 
-    if (isPublic !== undefined) {
-      query.isPublic = isPublic === 'true';
+    if (req.query.isPublic !== undefined) {
+      query.isPublic = req.query.isPublic === 'true';
     }
 
     const snippets = await Snippet.find(query)
@@ -50,7 +69,7 @@ router.get('/', auth, async (req: AuthRequest, res) => {
 });
 
 // Get a single snippet
-router.get('/:id', auth, async (req: AuthRequest, res) => {
+router.get('/:id', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const snippet = await Snippet.findById(req.params.id)
       .populate('user', 'name email')
@@ -61,7 +80,7 @@ router.get('/:id', auth, async (req: AuthRequest, res) => {
     }
 
     // Check if user has access to the snippet
-    if (!snippet.isPublic && snippet.user._id.toString() !== req.user._id.toString()) {
+    if (!snippet.isPublic && snippet.userId.toString() !== (req as AuthRequest).user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -73,9 +92,9 @@ router.get('/:id', auth, async (req: AuthRequest, res) => {
 });
 
 // Create a new snippet
-router.post('/', auth, async (req: AuthRequest, res) => {
+router.post('/', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { title, description, code, language, tags, isPublic } = req.body;
+    const { title, description, code, language, tags, isPublic } = req.body as { [key: string]: string | boolean };
     const snippet = new Snippet({
       title,
       description,
@@ -83,7 +102,7 @@ router.post('/', auth, async (req: AuthRequest, res) => {
       language,
       tags,
       isPublic,
-      user: req.user._id,
+      userId: new mongoose.Types.ObjectId((req as AuthRequest).user._id),
     });
     const savedSnippet = await snippet.save();
     res.status(201).json(savedSnippet);
@@ -94,9 +113,9 @@ router.post('/', auth, async (req: AuthRequest, res) => {
 });
 
 // Update a snippet
-router.put('/:id', auth, async (req: AuthRequest, res) => {
+router.put('/:id', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { title, description, code, language, tags, isPublic } = req.body;
+    const { title, description, code, language, tags, isPublic } = req.body as { [key: string]: string | boolean };
     const snippet = await Snippet.findById(req.params.id);
 
     if (!snippet) {
@@ -104,7 +123,7 @@ router.put('/:id', auth, async (req: AuthRequest, res) => {
     }
 
     // Check if user owns the snippet
-    if (snippet.user.toString() !== req.user._id.toString()) {
+    if (snippet.userId.toString() !== (req as AuthRequest).user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -122,7 +141,7 @@ router.put('/:id', auth, async (req: AuthRequest, res) => {
 });
 
 // Delete a snippet
-router.delete('/:id', auth, async (req: AuthRequest, res) => {
+router.delete('/:id', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const snippet = await Snippet.findById(req.params.id);
 
@@ -131,7 +150,7 @@ router.delete('/:id', auth, async (req: AuthRequest, res) => {
     }
 
     // Check if user owns the snippet
-    if (snippet.user.toString() !== req.user._id.toString()) {
+    if (snippet.userId.toString() !== (req as AuthRequest).user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -144,7 +163,7 @@ router.delete('/:id', auth, async (req: AuthRequest, res) => {
 });
 
 // Toggle favorite
-router.post('/:id/favorite', auth, async (req: AuthRequest, res) => {
+router.post('/:id/favorite', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const snippet = await Snippet.findById(req.params.id);
 
@@ -152,7 +171,7 @@ router.post('/:id/favorite', auth, async (req: AuthRequest, res) => {
       return res.status(404).json({ message: 'Snippet not found' });
     }
 
-    const userId = req.user._id;
+    const userId = new mongoose.Types.ObjectId((req as AuthRequest).user._id);
     const isFavorited = snippet.favorites.includes(userId);
 
     if (isFavorited) {
@@ -173,4 +192,4 @@ router.post('/:id/favorite', auth, async (req: AuthRequest, res) => {
   }
 });
 
-export default router; 
+export default router;

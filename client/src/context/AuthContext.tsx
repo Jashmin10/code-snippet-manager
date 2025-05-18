@@ -1,53 +1,57 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-}
+import React, { createContext, useState, useEffect, useContext } from 'react';
 
 interface AuthContextType {
-  user: User | null;
-  token: string | null;
+  isLoggedIn: boolean;
+  user: any;
+  setUser: (user: any) => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  register: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [user, setUser] = useState<any>({
+    id: '1',
+    name: 'Guest User',
+    email: 'guest@example.com'
+  });
 
   useEffect(() => {
-    if (token) {
-      fetchUser();
-    }
-  }, [token]);
+    // Automatically set user as logged in
+    const mockUser = {
+      id: '1',
+      name: 'Guest User',
+      email: 'guest@example.com'
+    };
+    setIsLoggedIn(true);
+    setUser(mockUser);
+  }, []);
 
-  const fetchUser = async () => {
+  const login = async (email: string, password: string): Promise<void> => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      } else {
-        logout();
-      }
+      const mockUser = {
+        id: '1',
+        email: email,
+        name: email.split('@')[0]
+      };
+      
+      // Store mock data
+      localStorage.setItem('token', 'mock-token');
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      setIsLoggedIn(true);
+      setUser(mockUser);
     } catch (error) {
-      console.error('Error fetching user:', error);
-      logout();
+      console.error('Login error:', error);
+      throw error;
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const register = async (email: string, password: string): Promise<void> => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,51 +60,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (!response.ok) {
-        throw new Error('Login failed');
-      }
-
-      const data = await response.json();
-      setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('token', data.token);
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-  };
-
-  const register = async (name: string, email: string, password: string) => {
-    try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      if (!response.ok) {
         throw new Error('Registration failed');
       }
 
       const data = await response.json();
-      setToken(data.token);
-      setUser(data.user);
       localStorage.setItem('token', data.token);
+      setIsLoggedIn(true);
+      setUser(data.user);
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
+  const logout = async (): Promise<void> => {
     localStorage.removeItem('token');
+    setIsLoggedIn(false);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, user, login, register, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -112,4 +92,4 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};

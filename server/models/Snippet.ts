@@ -1,5 +1,7 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Model, Schema, model, Types } from 'mongoose';
+import { IUser } from './User';
 
+// Define the interface
 export interface ISnippet extends Document {
   title: string;
   description: string;
@@ -7,80 +9,61 @@ export interface ISnippet extends Document {
   language: string;
   tags: string[];
   isPublic: boolean;
-  user: mongoose.Types.ObjectId;
-  favorites: mongoose.Types.ObjectId[];
-  createdAt: Date;
-  updatedAt: Date;
+  userId: Types.ObjectId;
+  favorites: Types.ObjectId[];
+  user?: IUser & { _id: Types.ObjectId };
+  favoritesUsers?: (IUser & { _id: Types.ObjectId })[];
 }
 
-const SnippetSchema: Schema = new Schema({
+// Define the schema
+const snippetSchema = new Schema<ISnippet>({
   title: {
     type: String,
     required: true,
     trim: true,
+    minlength: 1,
+    maxlength: 100
   },
   description: {
     type: String,
     trim: true,
-    default: '',
+    maxlength: 500
   },
   code: {
     type: String,
     required: true,
+    trim: true
   },
   language: {
     type: String,
     required: true,
-    enum: [
-      'javascript',
-      'typescript',
-      'python',
-      'java',
-      'cpp',
-      'csharp',
-      'ruby',
-      'php',
-      'go',
-      'rust',
-      'swift',
-      'html',
-      'css',
-      'sql',
-      'markdown',
-      'json',
-      'yaml',
-      'xml',
-      'shell',
-      'plaintext'
-    ],
+    trim: true,
+    enum: ['javascript', 'typescript', 'python', 'java', 'csharp', 'go', 'ruby', 'php', 'swift', 'kotlin', 'rust', 'sql', 'html', 'css', 'bash', 'powershell', 'other']
   },
   tags: [{
     type: String,
     trim: true,
+    maxlength: 50
   }],
   isPublic: {
     type: Boolean,
-    default: false,
+    default: false
   },
-  user: {
+  userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: true
   },
   favorites: [{
     type: Schema.Types.ObjectId,
-    ref: 'User',
-  }],
+    ref: 'User'
+  }]
 }, {
-  timestamps: true,
+  timestamps: true
 });
 
-// Add text index for search functionality
-SnippetSchema.index({ 
-  title: 'text', 
-  description: 'text', 
-  code: 'text', 
-  tags: 'text' 
-});
+// Create and export the model
+export const Snippet = model<ISnippet>('Snippet', snippetSchema) as Model<ISnippet>;
 
-export default mongoose.model<ISnippet>('Snippet', SnippetSchema); 
+// Export the interface
+export type SnippetModel = Model<ISnippet>; 

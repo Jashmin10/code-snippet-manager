@@ -4,7 +4,10 @@ import { Link } from 'react-router-dom';
 import SnippetList from '../components/SnippetList';
 import SnippetFilters from '../components/SnippetFilters';
 import { SnippetFilters as SnippetFiltersType, Snippet } from '../types/snippet';
+import { getSnippets } from '../api/snippets';
 import { languages } from '../utils/languages';
+import SnippetModal from '../components/SnippetModal';
+import Navbar from '../components/Navbar';
 
 const AllSnippets: React.FC = () => {
   const [filters, setFilters] = useState<SnippetFiltersType>({
@@ -13,6 +16,46 @@ const AllSnippets: React.FC = () => {
     tags: [],
     isPublic: undefined
   });
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [isSnippetModalOpen, setIsSnippetModalOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchSnippets = async () => {
+      try {
+        const response = await getSnippets();
+        setSnippets(response);
+      } catch (error) {
+        console.error('Error fetching snippets:', error);
+      }
+    };
+    fetchSnippets();
+  }, []);
+
+  // Reset filters when clicking "All Snippets"
+  const handleAllSnippetsClick = () => {
+    // Reset all filters
+    setFilters({
+      search: '',
+      language: 'All',
+      tags: [],
+      isPublic: undefined
+    });
+    // Force a re-render to ensure the filters are properly reset
+    setFilters(prev => ({
+      ...prev,
+      language: 'All'
+    }));
+  };
+
+  // Handle tag selection
+  const handleTagSelect = (tag: string) => {
+    setFilters(prev => {
+      const newTags = prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag];
+      return { ...prev, tags: newTags };
+    });
+  };
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   useEffect(() => {
@@ -37,6 +80,13 @@ const AllSnippets: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <Navbar
+        toggleSidebar={() => {}}
+        isSidebarOpen={false}
+        user={{ name: 'User' }}
+        onLogout={() => {}}
+        onNewSnippet={() => setIsSnippetModalOpen(true)}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
@@ -47,24 +97,6 @@ const AllSnippets: React.FC = () => {
               Browse and manage your code snippets
             </p>
           </div>
-          <Link
-            to="/snippets/new"
-            className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200"
-          >
-            <svg
-              className="-ml-1 mr-2 h-5 w-5"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-            New Snippet
-          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -77,6 +109,7 @@ const AllSnippets: React.FC = () => {
               <SnippetFilters
                 filters={filters}
                 onFilterChange={setFilters}
+                onTagSelect={handleTagSelect}
                 availableTags={availableTags}
                 availableLanguages={languages}
               />
@@ -89,13 +122,29 @@ const AllSnippets: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <SnippetList filters={filters} />
+              <SnippetList 
+                snippets={snippets}
+                selectedLanguage={filters.language}
+                onLanguageSelect={(language) => setFilters(prev => ({ ...prev, language }))}
+                onSnippetSelect={(snippet) => {
+                  // Handle snippet selection
+                  console.log('Snippet selected:', snippet);
+                }}
+              />
             </motion.div>
           </div>
         </div>
       </div>
+      <SnippetModal
+        isOpen={isSnippetModalOpen}
+        onClose={() => setIsSnippetModalOpen(false)}
+        onSnippetCreated={(newSnippet) => {
+          // Add new snippet to the list
+          setSnippets(prev => [...prev, newSnippet]);
+        }}
+      />
     </div>
   );
 };
 
-export default AllSnippets; 
+export default AllSnippets;

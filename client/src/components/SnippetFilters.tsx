@@ -6,6 +6,7 @@ import { languages } from '../utils/languages';
 interface SnippetFiltersProps {
   filters: SnippetFiltersType;
   onFilterChange: (filters: SnippetFiltersType) => void;
+  onTagSelect: (tag: string) => void;
   availableTags: string[];
   availableLanguages: readonly string[];
 }
@@ -13,6 +14,7 @@ interface SnippetFiltersProps {
 const SnippetFilters: React.FC<SnippetFiltersProps> = ({
   filters,
   onFilterChange,
+  onTagSelect,
   availableTags,
   availableLanguages
 }) => {
@@ -21,7 +23,13 @@ const SnippetFilters: React.FC<SnippetFiltersProps> = ({
   };
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onFilterChange({ ...filters, language: e.target.value });
+    const selectedValue = e.target.value;
+    // If the selected value matches the current value, reset to 'All'
+    if (selectedValue === filters.language) {
+      onFilterChange({ ...filters, language: 'All' });
+    } else {
+      onFilterChange({ ...filters, language: selectedValue });
+    }
   };
 
   const handleTagToggle = (tag: string) => {
@@ -77,25 +85,23 @@ const SnippetFilters: React.FC<SnippetFiltersProps> = ({
       </div>
 
       {/* Tags Filter */}
-      <div className="mb-6">
+      <div className="mt-4">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Tags
         </label>
         <div className="flex flex-wrap gap-2">
-          {availableTags.map((tag) => (
-            <motion.button
+          {availableTags.map(tag => (
+            <span
               key={tag}
-              onClick={() => handleTagToggle(tag)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
+              className={`px-3 py-1 text-sm font-medium rounded-full cursor-pointer transition-all duration-200 ${
                 filters.tags.includes(tag)
                   ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-purple-100 dark:hover:bg-purple-900'
               }`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              onClick={() => onTagSelect(tag)}
             >
-              {tag}
-            </motion.button>
+              #{tag}
+            </span>
           ))}
         </div>
       </div>
