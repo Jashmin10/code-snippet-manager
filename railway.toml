@@ -6,8 +6,14 @@ frontend = "client"
 backend = "server"
 
 [env]
+<<<<<<< HEAD
+MONGODB_URI = "mongodb+srv://mahendrapatel9824039954:${MONGODB_PASSWORD}@jashmin10.lbck83z.mongodb.net/?retryWrites=true&w=majority&appName=Jashmin10"
+JWT_SECRET = "${JWT_SECRET}"
+NODE_ENV = "production"
+=======
 MONGODB_URI = "mongodb+srv://your_username:your_password@your_cluster.mongodb.net/your_database"
 JWT_SECRET = "your_jwt_secret"
+>>>>>>> 661227c65cab44a540e2e65007c58b7c1746b317
 
 [deploy]
 region = "ap-south-1"  # Mumbai region
@@ -17,6 +23,11 @@ build = "npm run build"
 start = "serve -s build"
 
 [backend]
+<<<<<<< HEAD
+build = "npm install && npm run build"
+start = "npm start"
+=======
 build = "npm install"
 start = "node server.js"
+>>>>>>> 661227c65cab44a540e2e65007c58b7c1746b317
 
